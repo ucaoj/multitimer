@@ -1,4 +1,7 @@
 import React from "react";
+import { Editable, EditableInput, EditablePreview,
+        Button, IconButton, Stack, Text, Box, Grid, GridItem } from '@chakra-ui/react';
+import { AddIcon, CloseIcon } from '@chakra-ui/icons';
 
 type Time = {
     days: number,
@@ -12,7 +15,11 @@ type TimerProps = {
 };
 
 const TimerDisp = ({ t }: TimerProps): React.ReactNode => {
-    return <div>{t.days}:{t.hours}:{t.minutes}:{t.seconds}</div>;
+    const days = (t.days < 10 ? "0":"") + t.days.toString();
+    const hours = (t.hours < 10 ? "0":"") + t.hours.toString();
+    const minutes = (t.minutes < 10 ? "0":"") + t.minutes.toString();
+    const seconds = (t.seconds < 10 ? "0":"") + t.seconds.toString();
+    return <Text fontSize='4xl'>{days}:{hours}:{minutes}:{seconds}</Text>;
 };
 
 /* @param {number} start - start time in seconds
@@ -121,7 +128,7 @@ const TimerWithButton = ({t} : TimerProps): JSX.Element => {
     const [timerId, setTimerId] = React.useState(1);
 
 
-    const handleStartOrStop = (e: React.MouseEvent<HTMLButtonElement>, id: number): void => {
+    const handleStartOrStop = (id: number): void => {
         if(!intervalId) {
             const intervalid = setInterval(() => {
                 setTimerState(prev => prev.map(p => ({id:p.id, t:(p.isOn?tick(p.t):p.t), name:p.name, isOn:p.isOn})));
@@ -131,38 +138,45 @@ const TimerWithButton = ({t} : TimerProps): JSX.Element => {
         setTimerState(prev => prev.map(p => p.id===id?onStartOrStop(p):p));
     };
 
-    const handleReset = (e: React.MouseEvent<HTMLButtonElement>, id: number): void => {
+    const handleReset = (id: number): void => {
         //Db.send(timerState);
         setTimerState(prev => prev.map(p => p.id===id?onReset(p):p));
     };
 
-    const handleDelete = (e: React.MouseEvent<HTMLButtonElement>, id: number): void => {
+    const handleDelete = (id: number): void => {
         setTimerState(prev => prev.filter(p => p.id!==id));
     };
 
-    const handleNameChange = (e:React.FormEvent<HTMLInputElement>, id: number): void => {
+    const handleNameChange = (nextValue:string, id: number): void => {
         setTimerState(prev => prev.map(
-            p => ({ id:p.id, t:p.t, name:(e.currentTarget.value&&id===p.id?e.currentTarget.value:p.name), isOn:p.isOn })
+            p => ({ id:p.id, t:p.t, name:(nextValue&&id===p.id?nextValue:p.name), isOn:p.isOn })
         ));
     }
 
-    const handleAddTimer = (e: React.MouseEvent<HTMLButtonElement>): void => {
+    const handleAddTimer = (): void => {
         setTimerState(prev => prev.concat([{id: timerId, t:defaultTime, name:"", isOn:false}]));
         setTimerId(prev => prev+1);
     }
 
     return (
         <>
+            <Grid autoColumns='minmax(200px,300px)' gap={4}>
             {timerState.map((st,id) => 
-                (<div key={st.id}>
-                    <input value={st.name} onChange={ e => { handleNameChange(e, st.id); } }/>
+                (<Box key={st.id} m={1} p={3} border='2px' borderRadius="5" borderColor='gray.200'>
+                    <Editable fontSize='2xl' defaultValue="timer name" onChange={nextValue => { handleNameChange(nextValue, st.id); }}>
+                        <EditablePreview />
+                        <EditableInput />
+                    </Editable>
                     <TimerDisp t={st.t}/>
-                    <button onClick={ e => {handleStartOrStop(e, st.id);} }>{st.isOn?"stop":"start"}</button>
-                    <button onClick={ e => {handleReset(e, st.id);} }>reset</button>
-                    <button onClick={ e => {handleDelete(e, st.id);} }>delete</button>
-                </div>)
+                    <Stack spacing={4} direction='row' align='center'>
+                        <Button onClick={ () => {handleStartOrStop(st.id);} }>{st.isOn?"stop":"start"}</Button>
+                        <Button onClick={ () => {handleReset(st.id);} }>reset</Button>
+                        <Button onClick={ () => {handleDelete(st.id);} }>delete</Button>
+                    </Stack>
+                </Box>)
             )}
-            <button onClick={handleAddTimer}>add</button>
+            </Grid>
+            <IconButton aria-label='add' icon={<AddIcon />} m={3} onClick={handleAddTimer} />
         </>
     ); 
 };
