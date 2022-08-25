@@ -73,6 +73,7 @@ const tick = (t: Time): Time => {
 };
 
 type TimeAndPropProps = {
+    id: number,
     t : Time,
     name : string,
     isOn : boolean,
@@ -102,11 +103,11 @@ type TimeAndPropProps = {
 
 const onStartOrStop = (st: TimeAndPropProps): TimeAndPropProps => {
     console.log("onstartorstop called");
-    return { t:st.t, name:st.name, isOn:!st.isOn };
+    return { id:st.id, t:st.t, name:st.name, isOn:!st.isOn };
 };
 
 const onReset = (st:TimeAndPropProps): TimeAndPropProps => {
-    return { t:{days:0, hours:0, minutes:0, seconds:0}, name:st.name, isOn:false };
+    return { id:st.id, t:{days:0, hours:0, minutes:0, seconds:0}, name:st.name, isOn:false };
 };
 
 const isTimerZero = (t: Timer): bool => {
@@ -114,47 +115,54 @@ const isTimerZero = (t: Timer): bool => {
 };
 
 const TimerWithButton = ({t} : TimerProps): JSX.Element => {
-    //should use 3 states?
-    const [timerState, setTimerState] = React.useState({t:t, name:"", isOn:false});
+    const defaultTime = {days:0, hours:0, minutes:0, seconds:0};
+    const [timerState, setTimerState] = React.useState([{id:0, t:defaultTime, name:"", isOn:false}]);
     const [intervalId, setIntervalId] = React.useState(null as number);
+    const [timerId, setTimerId] = React.useState(1);
 
-    const handleStartOrStop = (e: React.MouseEvent<HTMLButtonElement>): void => {
-        if(!timerState.isOn) {
-            const id = setInterval(() => {
-                setTimerState(prev => ({t:tick(prev.t), name:prev.name, isOn:true}));
+
+    const handleStartOrStop = (e: React.MouseEvent<HTMLButtonElement>, id: number): void => {
+        if(!intervalId) {
+            const intervalid = setInterval(() => {
+                setTimerState(prev => prev.map(p => ({id:p.id, t:(p.isOn?tick(p.t):p.t), name:p.name, isOn:p.isOn})));
             }, 1000);
-            console.log(id);
-            setIntervalId(id);
+            setIntervalId(intervalid);
         }
-        else {
-            if(intervalId) clearInterval(intervalId);
-            setIntervalId(null);
-        }
-        setTimerState(onStartOrStop(timerState));
+        setTimerState(prev => prev.map(p => p.id===id?onStartOrStop(p):p));
     };
 
-    const handleReset = (e: React.MouseEvent<HTMLButtonElement>): void => {
+    const handleReset = (e: React.MouseEvent<HTMLButtonElement>, id: number): void => {
         //Db.send(timerState);
-        setTimerState(onReset(timerState));
-        if(intervalId) clearInterval(intervalId);
-        setIntervalId(null);
+        setTimerState(prev => prev.map(p => p.id===id?onReset(p):p));
     };
 
-    const handleDelete = (e: React.MouseEvent<HTMLButtonElement>): void => {
-        if(timerState.name != null || !isTimerZero(timerState.t)) {
-            setTimerState({t:{days:0, hours:0, minutes:0, seconds:0}, name:"", isOn:false});
-        }
+    const handleDelete = (e: React.MouseEvent<HTMLButtonElement>, id: number): void => {
+        setTimerState(prev => prev.filter(p => p.id!==id));
     };
+
+    const handleNameChange = (e:React.FormEvent<HTMLInputElement>, id: number): void => {
+        setTimerState(prev => prev.map(
+            p => ({ id:p.id, t:p.t, name:(e.currentTarget.value&&id===p.id?e.currentTarget.value:p.name), isOn:p.isOn })
+        ));
+    }
+
+    const handleAddTimer = (e: React.MouseEvent<HTMLButtonElement>): void => {
+        setTimerState(prev => prev.concat([{id: timerId, t:defaultTime, name:"", isOn:false}]));
+        setTimerId(prev => prev+1);
+    }
 
     return (
         <>
-            <input value={timerState.name} onChange={(e:React.FormEvent<HTMLInputElement>) => {
-                setTimerState({ t:timerState.t, name:e.currentTarget.value?e.currentTarget.value:"", isOn:timerState.isOn });
-            }}/>
-            <TimerDisp t={timerState.t}/>
-            <button onClick={handleStartOrStop}>{timerState.isOn?"stop":"start"}</button>
-            <button onClick={handleReset}>reset</button>
-            <button onClick={handleDelete}>delete</button>
+            {timerState.map((st,id) => 
+                (<div key={st.id}>
+                    <input value={st.name} onChange={ e => { handleNameChange(e, st.id); } }/>
+                    <TimerDisp t={st.t}/>
+                    <button onClick={ e => {handleStartOrStop(e, st.id);} }>{st.isOn?"stop":"start"}</button>
+                    <button onClick={ e => {handleReset(e, st.id);} }>reset</button>
+                    <button onClick={ e => {handleDelete(e, st.id);} }>delete</button>
+                </div>)
+            )}
+            <button onClick={handleAddTimer}>add</button>
         </>
     ); 
 };
