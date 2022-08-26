@@ -2,17 +2,9 @@ import React from "react";
 import { Editable, EditableInput, EditablePreview,
         Button, IconButton, Stack, Text, Box, Grid, GridItem } from '@chakra-ui/react';
 import { AddIcon, CloseIcon } from '@chakra-ui/icons';
+import type { Time, TimerProps, TimeAndPropProps, StopType } from './types';
+import { recordTime } from './recorder';
 
-type Time = {
-    days: number,
-    hours: number,
-    minutes: number,
-    seconds: number,
-};
-
-type TimerProps = {
-    t: Time,
-};
 
 const TimerDisp = ({ t }: TimerProps): React.ReactNode => {
     const days = (t.days < 10 ? "0":"") + t.days.toString();
@@ -79,12 +71,6 @@ const tick = (t: Time): Time => {
      return carryTime(now);
 };
 
-type TimeAndPropProps = {
-    id: number,
-    t : Time,
-    name : string,
-    isOn : boolean,
-};
 
 //type TimerNameProps = {
 //    name: string,
@@ -109,21 +95,21 @@ type TimeAndPropProps = {
 //};
 
 const onStartOrStop = (st: TimeAndPropProps): TimeAndPropProps => {
-    console.log("onstartorstop called");
-    return { id:st.id, t:st.t, name:st.name, isOn:!st.isOn };
+    if(st.isOn) {
+        recordTime(st, "STOP");
+    }
+    const stTime = st.isOn?null:new Date();
+    return { id:st.id, t:st.t, start:stTime, name:st.name, isOn:!st.isOn };
 };
 
 const onReset = (st:TimeAndPropProps): TimeAndPropProps => {
-    return { id:st.id, t:{days:0, hours:0, minutes:0, seconds:0}, name:st.name, isOn:false };
-};
-
-const isTimerZero = (t: Timer): bool => {
-    return t.days===0 && t.hours===0 && t.minutes===0 && t.seconds===0;
+    if(st.start) recordTime(st, "RESET");
+    return { id:st.id, t:{days:0, hours:0, minutes:0, seconds:0}, start:null, name:st.name, isOn:false };
 };
 
 const TimerWithButton = ({t} : TimerProps): JSX.Element => {
     const defaultTime = {days:0, hours:0, minutes:0, seconds:0};
-    const [timerState, setTimerState] = React.useState([{id:0, t:defaultTime, name:"", isOn:false}]);
+    const [timerState, setTimerState] = React.useState([{id:0, t:defaultTime, start:null, name:"", isOn:false}]);
     const [intervalId, setIntervalId] = React.useState(null as number);
     const [timerId, setTimerId] = React.useState(1);
 
@@ -131,7 +117,7 @@ const TimerWithButton = ({t} : TimerProps): JSX.Element => {
     const handleStartOrStop = (id: number): void => {
         if(!intervalId) {
             const intervalid = setInterval(() => {
-                setTimerState(prev => prev.map(p => ({id:p.id, t:(p.isOn?tick(p.t):p.t), name:p.name, isOn:p.isOn})));
+                setTimerState(prev => prev.map(p => ({id:p.id, t:(p.isOn?tick(p.t):p.t), start: p.start, name:p.name, isOn:p.isOn})));
             }, 1000);
             setIntervalId(intervalid);
         }
@@ -149,12 +135,12 @@ const TimerWithButton = ({t} : TimerProps): JSX.Element => {
 
     const handleNameChange = (nextValue:string, id: number): void => {
         setTimerState(prev => prev.map(
-            p => ({ id:p.id, t:p.t, name:(nextValue&&id===p.id?nextValue:p.name), isOn:p.isOn })
+            p => ({ id:p.id, t:p.t, start:p.start, name:(nextValue&&id===p.id?nextValue:p.name), isOn:p.isOn })
         ));
     }
 
     const handleAddTimer = (): void => {
-        setTimerState(prev => prev.concat([{id: timerId, t:defaultTime, name:"", isOn:false}]));
+        setTimerState(prev => prev.concat([{id: timerId, t:defaultTime, start:new Date(), name:"", isOn:false}]));
         setTimerId(prev => prev+1);
     }
 
@@ -171,7 +157,10 @@ const TimerWithButton = ({t} : TimerProps): JSX.Element => {
                     <Stack spacing={4} direction='row' align='center'>
                         <Button onClick={ () => {handleStartOrStop(st.id);} }>{st.isOn?"stop":"start"}</Button>
                         <Button onClick={ () => {handleReset(st.id);} }>reset</Button>
-                        <Button onClick={ () => {handleDelete(st.id);} }>delete</Button>
+                        <Button onClick={ () => {
+                            if(st.start) recordTime(st, "DELETE");
+                            handleDelete(st.id);
+                        } }>delete</Button>
                     </Stack>
                 </Box>)
             )}
@@ -182,4 +171,3 @@ const TimerWithButton = ({t} : TimerProps): JSX.Element => {
 };
 
 export default TimerWithButton;
-export default Time;
