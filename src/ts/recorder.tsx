@@ -1,9 +1,11 @@
 import axios from "axios";
-import type { Time, TimeAndPropProps, StopType } from './types';
+import type { Time, TimeAndPropProps, StopType, TimerRecord } from './types';
+import { calcPassedTime } from './calcTime';
 
 const server_url = "http://localhost:8000"
 
-const stopTypeMap = new Map([["STOP", 1], ["RESET", 2], ["DELETE", 3], ["HUP", 4]]);
+const stopTypeArray:StopType[] = ["STOP", "RESET", "DELETE", "HUP"];
+const stopTypeMap = new Map(stopTypeArray.map((a, i) => [a, i+1]));
 
 const recordTime = (st: TimeAndPropProps, stoptype: StopType): void => {
     const totalSec = st.t.days * 24 * 60 * 60 + st.t.hours * 60 * 60 + st.t.minutes * 60 + st.t.seconds + 0.0;
@@ -24,4 +26,34 @@ const recordTime = (st: TimeAndPropProps, stoptype: StopType): void => {
                 });
 };
 
-export { recordTime };
+const fetchRecords = async (): TimerRecord[] => {
+    let recs: TimerRecord[] = [];
+    try{
+        const res = await axios.get(server_url+"/stat/");
+        const data = await res.data;
+
+        if(!Array.isArray(data)) {
+            //throw
+            console.log("data is not array");
+            recs = [];
+        }
+        //TODO validate
+
+        recs = data.map(d => {
+            const passedSec = d.days * 3600 + d.seconds;
+            const tr: TimerRecord = {
+                id: d.id,
+                name: d.name,
+                start: new Date(d.start),
+                duration: passedSec,
+                stop_type: stopTypeArray[d.stop_type-1],
+            }; 
+            return tr;
+        });
+    } catch(err){
+        console.log("[ERROR]@fetchRecords:", err);     
+    }
+    return recs;
+};
+
+export { recordTime, fetchRecords };

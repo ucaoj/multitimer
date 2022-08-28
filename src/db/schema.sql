@@ -1,5 +1,5 @@
-create table if not exists multitimer.records (
-    id INTEGER unique primary key,
+create table if not exists records (
+    id INTEGER,
     name text NOT NULL,
     timer_start text, 
     days integer,

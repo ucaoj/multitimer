@@ -20,4 +20,12 @@ type TimeAndPropProps = {
 
 type StopType = "STOP" | "RESET" | "DELETE" | "HUP";
 
-export { Time, TimerProps, TimeAndPropProps, StopType };
+type TimerRecord = {
+    id: number,
+    name: string,
+    start: Date | null,
+    duration: number,
+    stop_type: StopType,
+};
+
+export { Time, TimerProps, TimeAndPropProps, StopType, TimerRecord };
