@@ -14,6 +14,7 @@ type TimeAndPropProps = {
     id: number,
     t : Time,
     start: Date | null,
+    prev: Date | null,
     name : string,
     isOn : boolean,
 };

@@ -52,9 +52,10 @@ const updateTime = (prev: Time, diff: number): Time => {
     return carryTime(_now);
 };
 
-const tick = (t: Time): Time => {
-     const now = { days:t.days, hours:t.hours, minutes:t.minutes, seconds:t.seconds + 1 };
-     return carryTime(now);
+const tick = (t: Time, now: Date, prev: Date): Time => {
+    const diff = Math.floor((now.getTime() - prev.getTime()) / 1000);   //seconds
+    const n = { days:t.days, hours:t.hours, minutes:t.minutes, seconds:t.seconds + diff };
+    return carryTime(n);
 };
 
 export { calcPassedTime, carryTime, updateTime, tick };

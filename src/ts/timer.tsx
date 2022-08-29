@@ -44,17 +44,22 @@ const onStartOrStop = (st: TimeAndPropProps): TimeAndPropProps => {
         recordTime(st, "STOP");
     }
     const stTime = st.isOn?null:new Date();
-    return { id:st.id, t:st.t, start:stTime, name:st.name, isOn:!st.isOn };
+    return { id:st.id, t:st.t, start:stTime, prev:stTime, name:st.name, isOn:!st.isOn };
 };
 
 const onReset = (st:TimeAndPropProps): TimeAndPropProps => {
     if(st.start) recordTime(st, "RESET");
-    return { id:st.id, t:{days:0, hours:0, minutes:0, seconds:0}, start:null, name:st.name, isOn:false };
+    return { id:st.id, t:{days:0, hours:0, minutes:0, seconds:0}, start:null, prev:null, name:st.name, isOn:false };
+};
+
+const updateTimer = (p: TimeAndPropProps): TimeAndPropProps => {
+    const now = new Date();
+    return {id:p.id, t:(p.isOn&&p.prev!=null?tick(p.t, now, p.prev):p.t), start: p.start, prev:now, name:p.name, isOn:p.isOn};
 };
 
 const TimerWithButton = ({t} : TimerProps): JSX.Element => {
     const defaultTime = {days:0, hours:0, minutes:0, seconds:0};
-    const [timerState, setTimerState] = React.useState([{id:0, t:defaultTime, start:null, name:"", isOn:false}]);
+    const [timerState, setTimerState] = React.useState([{id:0, t:defaultTime, start:null, prev:null, name:"", isOn:false}]);
     const [intervalId, setIntervalId] = React.useState(null as number);
     const [timerId, setTimerId] = React.useState(1);
 
@@ -62,7 +67,7 @@ const TimerWithButton = ({t} : TimerProps): JSX.Element => {
     const handleStartOrStop = (id: number): void => {
         if(!intervalId) {
             const intervalid = setInterval(() => {
-                setTimerState(prev => prev.map(p => ({id:p.id, t:(p.isOn?tick(p.t):p.t), start: p.start, name:p.name, isOn:p.isOn})));
+                setTimerState(prev => prev.map(p => updateTimer(p)));
             }, 1000);
             setIntervalId(intervalid);
         }
@@ -80,12 +85,12 @@ const TimerWithButton = ({t} : TimerProps): JSX.Element => {
 
     const handleNameChange = (nextValue:string, id: number): void => {
         setTimerState(prev => prev.map(
-            p => ({ id:p.id, t:p.t, start:p.start, name:(nextValue&&id===p.id?nextValue:p.name), isOn:p.isOn })
+            p => ({ id:p.id, t:p.t, start:p.start, prev:p.prev, name:(nextValue&&id===p.id?nextValue:p.name), isOn:p.isOn })
         ));
     }
 
     const handleAddTimer = (): void => {
-        setTimerState(prev => prev.concat([{id: timerId, t:defaultTime, start:new Date(), name:"", isOn:false}]));
+        setTimerState(prev => prev.concat([{id: timerId, t:defaultTime, start:new Date(), prev:null, name:"", isOn:false}]));
         setTimerId(prev => prev+1);
     }
 
