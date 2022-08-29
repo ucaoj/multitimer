@@ -3,9 +3,9 @@ import { Box, Stack,
     Table, Thead, Tbody, Tfood, Tr, Th, Td, TableCaption, TableContainer,
     IconButton
 } from '@chakra-ui/react';
-import { RepeatIcon } from '@chakra-ui/icons';
+import { RepeatIcon, DeleteIcon } from '@chakra-ui/icons';
 import type { Time, TimeRecord, TimerRecord } from './types';
-import { fetchRecords } from './recorder';
+import { deleteRecord, fetchRecords } from './recorder';
 import { TimerDisp } from './timer';
 import { calcPassedTime } from './calcTime';
 
@@ -14,13 +14,34 @@ type RecordDispProp = {
 };
 
 const RecordDisp = ({rs}: RecordDispProp): JSX.Element => {
-    console.log("RecordDisp: ", rs);
+    const [isDisp, setIsDisp] = React.useState(Array(rs?rs.length:0).fill(true));
+
+    React.useEffect(() => {
+        if(!rs || rs.length !== isDisp.length) {
+            setIsDisp(Array(rs?rs.length:0).fill(true));
+        }
+    });
+    console.log("RecordDisp: ", isDisp);
+
+    const handleDelete = (r: TimerRecord, i: number): void => {
+        deleteRecord(r);
+        setIsDisp(p => {
+            const p_new = [...p];
+            p_new[i] = false;
+            return p_new;
+        });
+        console.log(isDisp);
+    };
+
     return (
         <>
-            { rs.map(r => (
+            { rs.map((r,i) => isDisp[i] && (
                 <Tr key={r.start}>
                     <Th>{r.name}</Th>
                     <Th><TimerDisp t={calcPassedTime(0, r.duration)} /></Th>
+                    <Th>
+                        <IconButton aria-label='delete' icon={<DeleteIcon />} m={3} onClick={() => handleDelete(r, i)} /> 
+                   </Th>
                 </Tr>))
             } 
         </>
@@ -85,7 +106,9 @@ const RecordPanel = (): JSX.Element => {
             </Tr>
         </Thead>
         <Tbody>
-            { records.map(r => <RecordDisp rs={r} key={r?r[0].id:-1}/>) }
+            { records.map(r => (
+                    <RecordDisp rs={r} key={r?r[0].id:-1}/>
+            )) }
         </Tbody>
         </Table>
         </TableContainer>

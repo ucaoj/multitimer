@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 app = FastAPI()
+db_path = "../db/multitimer.db"
 
 # https://fastapi.tiangolo.com/ja/tutorial/cors/
 origins = [
@@ -39,7 +40,7 @@ class RecordItem(BaseModel):
     stop_type: int = Field(ge=1, le=4, description="STOP: 1\nRESET: 2\nDELETE: 3\nHUP: 4")
 
 def db_insert_item(item: RecordItem):
-    con = sqlite3.connect("../db/multitimer.db")
+    con = sqlite3.connect(db_path)
     cur = con.cursor()
     cur.execute(f"INSERT INTO records VALUES ({item.id}, \'{item.name}\', \'{item.start.isoformat()}\', {item.duration.days}, {item.duration.seconds}, {item.stop_type})")
     con.commit()
@@ -48,9 +49,16 @@ def db_insert_item(item: RecordItem):
 def record_timer(item: RecordItem):
     db_insert_item(item) 
 
+@app.post("/delete/")
+def delete_record(item: RecordItem):
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    cur.execute(f"DELETE FROM records WHERE id={item.id} AND name=\'{item.name}\' AND timer_start=\'{item.start.isoformat()}\';");
+    con.commit()
+
 @app.get("/stat/")
 def stat_page():
-    con = sqlite3.connect("../db/multitimer.db")
+    con = sqlite3.connect(db_path)
     cur = con.cursor()
     res = cur.execute("SELECT id,name,timer_start,days,seconds,stoptype FROM records")
     all_data = res.fetchall()

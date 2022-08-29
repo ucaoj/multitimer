@@ -26,6 +26,17 @@ const recordTime = (st: TimeAndPropProps, stoptype: StopType): void => {
                 });
 };
 
+const deleteRecord = (r: TimerRecord): void => {
+    const data = {
+        id: r.id,
+        name: r.name,
+        start: r.start?.toISOString(),
+        duration: r.duration + 0.0,
+        stop_type: stopTypeMap.get(r.stop_type)
+    };
+    const url = axios.post(server_url+"/delete/", data);
+};
+
 const fetchRecords = async (): TimerRecord[] => {
     let recs: TimerRecord[] = [];
     try{
@@ -56,4 +67,4 @@ const fetchRecords = async (): TimerRecord[] => {
     return recs;
 };
 
-export { recordTime, fetchRecords };
+export { recordTime, deleteRecord, fetchRecords };
