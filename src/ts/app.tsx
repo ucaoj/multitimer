@@ -5,7 +5,7 @@ import { ChakraProvider, Flex, Spacer, Box, Button,
     useDisclosure, Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, 
     FormControl, FormLabel, Input, FormErrorMessage,
     Checkbox } from '@chakra-ui/react';
-import { register, signin } from './recorder';
+import { register, signin, logout } from './recorder';
 import { TimerWithButton } from "./timer";
 import { RecordPanel } from './recordPanel';
 
@@ -25,11 +25,14 @@ const App = (): JSX.Element => {
     const handleSignState =() => {
         console.log("sign");
         if(!isLoggedin) onOpen(); 
-        else setIsLoggedin(false);
+        else{
+            logout(isLoggedin);
+            setIsLoggedin(undefined);
+        }
     };
 
     useEffect(() => {
-        console.log("useeffect")
+        console.log("useeffect of App")
         if(submitIn === "NONE") return;
         if(submitIn === "IN") {
             handleSignIn();
@@ -45,15 +48,17 @@ const App = (): JSX.Element => {
         console.log("signin")
         setIsin(true); 
         const [success, mes] = await signin(username, pwd);
+        console.log(success, mes)
         if(success) setIsLoggedin(username);
         setIsInvalid(!success); 
         setErrMes(success?"":mes);
     }
 
     const handleSignUp = async () => {
-        console.log("signup")
+        console.log("signup...")
         setIsin(false);
         const [success, mes] = await register(username, pwd);
+        console.log("done register");
         if(success) setIsLoggedin(username);
         setIsInvalid(!success); 
         setErrMes(success?"":mes);
@@ -62,9 +67,9 @@ const App = (): JSX.Element => {
     return (<>
         <Tabs>
             <TabList>
-                <Flex>
+                <Flex width='100%'>
                     <Box><Tab>Timers</Tab></Box>
-                    <Box><Tab>Records</Tab></Box>
+                    <Box><Tab>{isLoggedin ? isLoggedin+"'s Records":"Records"}</Tab></Box>
                     <Spacer />
                     <Button onClick={handleSignState}>Sign {isLoggedin?'Out':'In'}</Button>
                 </Flex>
@@ -86,7 +91,9 @@ const App = (): JSX.Element => {
                 <DrawerBody>
                     <FormControl isInvalid={isInvalid}>
                         <FormLabel>User name</FormLabel>
-                        <Input placeholder='user name' onChande={handleChangeName}/>
+                        <Input placeholder='user name' onChange={handleChangeName} />
+                    </FormControl>
+                    <FormControl isInvalid={isInvalid}>
                         <FormLabel>Password</FormLabel>
                         <Input type={show ? 'text':'password'} placeholder='Enter password' onChange={handleChangePwd} />
                         <Checkbox onChange={handleCheck}>{show?'Hide':'Show'} password</Checkbox>

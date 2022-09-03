@@ -11,30 +11,33 @@ const hashPwd = (pwd: string): string => {
     return pwd;  
 };
 
-const register = async (username: string, pwd: string): boolean => {
+const register = async (username: string, pwd: string): [boolean, string] => {
     try{
-        const res = await axios.post(server_url+"/auth/signup", {
-                        name: username,
-                        pwd: hashPwd(pwd), 
-                });
-        return true;
-   }catch(err) {
+        const data = {
+            username: username,
+            pwd: hashPwd(pwd), 
+        };
+        const res = await axios.post(server_url+"/auth/signup", data);
+        console.log("post done");
+        return [true, res.data.message];
+    }catch(err) {
         console.log("[ERROR]@register ", err);
-        return false;
-   }
+    }
+    return [false, "http error"];
 }
 
 const digestStr = async (str: string): ArrayBuffer => {
     const encoder = new TextEncoder();
     const data = encoder.encode(str);
-    const hashBuf = await crypto.sublte.digest('SHA-256', data);
+    const hashBuf = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuf));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0').join(''));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     return hashHex;
 }
 
 const generateHash = async (username: string, realm: string, pwd: string, nonce: string, cnonce: string, nc: string, qop: string): string => {
-    const a1 = digestStr(username + ":" + realm + ":" + pwd);
+    console.log(username, realm, pwd, nonce, cnonce, nc, qop);
+    const a1 = await digestStr(username + ":" + realm + ":" + pwd);
     const a2 = await digestStr("POST:/auth/signin");
     return digestStr(a1+":"+nonce+":"+nc+":"+cnonce+":"+qop+":"+a2);
 }
@@ -43,56 +46,75 @@ const generateHash = async (username: string, realm: string, pwd: string, nonce:
 const signin = async (username: string, pwd: string): [boolean, string] => {
     try{
         const regName = /[a-zA-Z0-9_-]+/; 
-        const regPwd = /[a-zA-Z0-9_]+/;
-        const regPwd_8plus = /[a-zA-Z0-9_]{8,}/;
+        const regPwd = /[a-zA-Z0-9]+/;
+        const regPwd_8plus = /[a-zA-Z0-9]{8,}/;
 
-        if(!regName.test(username)) return [false, "user name contains invalid characters"];
+        if(!regName.test(username)) {
+            return [false, "user name contains invalid characters"];
+        }
         if(!regPwd.test(pwd)) {
             return [false, "password contains invalid characters"];
         }
         else {
-            if(!regPwd_8plus.test(pwd)) return [false, "password must contain 8 or above characters"];
+            if(!regPwd_8plus.test(pwd)) {
+                return [false, "password must contain 8 or above characters"];
+            }
         }
 
-        const res = await axios.post(server_url+"/auth/signin", {
-                        name: username,
+        const headers = {
+            "Access-Control-Expose-Headers": "username",
+            'username': username
+        }
+        const res = await axios.post(server_url+"/auth/signin", { username:username }, {
+                        headers: headers
                     });
         return [false, ""];
     }catch(err) {
         console.log("[ERROR]@login ", err);
-        if(err.response.status === 401 && err.response.headers["WWW-Authenticate"] === "Digest") {
-            if(err.response.headers["algorithm"] !== "SHA-256") return [false, "Some internal algorithm failed. Please Retry"];
+        if(err.response.status === 401 && err.response.headers["www-authenticate"] === "Digest") {
+            if(err.response.headers.algorithm !== "SHA-256") {
+                return [false, "Some internal algorithm failed. Please Retry"];
+            }
             const cnonce_num = new Uint8Array(8);
             self.crypto.getRandomValues(cnonce_num);
-            const cnonce = cnonce_num.map(b => b.toString(16).padStart(2, '0').join(''));
+            const cnonce = cnonce_num.map(b => b.toString(16).padStart(2, '0')).join('');
+            const hash = await generateHash(username, err.response.headers.realm, pwd, err.response.headers.nonce, cnonce, "00000001", "auth");
+            console.log(hash)
             const config = {
                 headers: {
+                    "Access-Control-Expose-Headers": "Authorization, username, realm, uri, qop, algorithm, nonce, opaque, nc, response",
                     "Authorization": "Digest",
                     "username": username,
-                    "realm": err.response.headers["realm"],
+                    "realm": err.response.headers.realm,
                     "uri": "/auth/signin",
-                    "algorithm": err.response.headers["algorithm"],
-                    "nonce": err.response.headers["nonce"],
+                    "algorithm": err.response.headers.algorithm,
+                    "nonce": err.response.headers.nonce,
                     "nc": "00000001",
                     "cnonce": cnonce,
                     "qop": "auth",
-                    "response": await generate_hash(username, err.response.headers["realm"],pwd, err.response.headers["nonce"], cnonce, "00000001", "auth"),
-                    "opaque": err.response.headers["opaque"],
+                    "response": hash,
+                    "opaque": err.response.headers.opaque,
                 }
             };
+            console.log("sending")
             const res = await axios.post(server_url+"/auth/signin/", {}, config);
-            if(res.data.success) return [true, ""];
-            else return [false, res.data.message]
+            console.log(res.data.success, res.data)
+            if(res.data.success === "true") {
+                return [true, ""];
+            } 
+            else {
+                return [false, res.data.message];
+            }
         }
         else {
-            return [false, "server returned incorrect response"]
+            return [false, "server returned incorrect response"];
         }
     }
 }
 
 const logout = async (username: string): boolean => {
     try {
-        const res = axios.post(server_url+"/auth/logout", {
+        const res = await axios.post(server_url+"/auth/signout", {
                     username,
                 });
         return true;
@@ -164,4 +186,4 @@ const fetchRecords = async (): TimerRecord[] => {
     return recs;
 };
 
-export { recordTime, signin, register, deleteRecord, fetchRecords };
+export { recordTime, signin, register, logout, deleteRecord, fetchRecords };
